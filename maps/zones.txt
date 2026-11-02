@@ -1,0 +1,20 @@
+# Zone types: two equally long routes (one priority, one restricted)
+# and a blocked shortcut that must never be used
+nb_drones: 5
+
+start_hub: base 0 2 [color=green]
+hub: gate 1 2 [max_drones=3]
+hub: canyon 2 1 [zone=restricted color=orange max_drones=2]
+hub: ridge 2 3 [zone=priority color=cyan]
+hub: valley 3 3
+hub: wall 2 2 [zone=blocked color=gray]
+end_hub: landing 4 2 [color=red]
+
+connection: base-gate [max_link_capacity=3]
+connection: gate-canyon [max_link_capacity=2]
+connection: gate-ridge
+connection: gate-wall
+connection: canyon-landing [max_link_capacity=2]
+connection: ridge-valley
+connection: valley-landing
+connection: wall-landing

@@ -1,0 +1,26 @@
+[project]
+name = "fly-in"
+version = "1.0.0"
+description = "Drone routing and scheduling on a capacity-constrained graph, with a pygame visualizer"
+readme = "README.md"
+authors = [
+    {name = "Ilias", email = "ikolokou@student.42berlin.de"}
+]
+requires-python = ">=3.10"
+dependencies = [
+    "colorist>=1.8.15",
+    "pydantic>=2.13.5,<3.0.0",
+    "pygame-ce>=2.5.8",
+]
+
+[dependency-groups]
+dev = [
+    "flake8>=7.0",
+    "mypy>=1.10",
+]
+
+[tool.uv]
+package = false
+
+[tool.mypy]
+strict = true

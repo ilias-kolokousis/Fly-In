@@ -2,14 +2,48 @@ _This project has been created as part of the 42 curriculum by ikolokou._
 
 # Fly-In
 
-## Description
+Fly-In routes a fleet of drones through a network of hubs (a graph) from a
+start hub to an end hub, using as few turns as possible while respecting
+the capacity limits of hubs and connections. The resulting schedule is printed
+turn by turn and replayed in an interactive pygame visualizer.
 
-Fly-In is a project where in a map (graph) drones need to travel to the end by finding the most optimal path and at the same time respecting any limitations found in the connections (edges) or hubs (nodes).
+![Fly-In visualizer](docs/screenshot.png)
 
-## Instructions
+## Features
 
-1. In terminal, run `make install` to create a new virtual environment and inside install the dependencies needed.
-2. Run `make run ARGS=<file path>` to start the simulation. `file path` is the txt file that holds all map specifications. Here is an example of such a file:
+- **Map parser and validator** for a simple text format, with clear error messages that include line numbers.
+- **Dijkstra pathfinding** that takes zone costs into account: blocked,
+  restricted (slow) and priority (preferred) hubs.
+- **Turn-based scheduler** that keeps every drone moving while never exceeding
+  a hub's `max_drones` or a link's `max_link_capacity`, and stops with an error
+  if the fleet can no longer make progress.
+- **Interactive visualizer**: step through the turns, hover a hub to see its
+  name, and see link capacity drawn as line thickness.
+
+## Getting started
+
+Requirements: Python ≥ 3.10 and [uv](https://docs.astral.sh/uv/).
+
+```sh
+make install                      # create .venv and install dependencies
+make run                          # run maps/simple_fork.txt with the visualizer
+make run MAP=maps/zones.txt       # run another map
+make headless MAP=maps/zones.txt  # print the schedule only, no window
+```
+
+Or call the module directly:
+
+```sh
+uv run python -m fly_in <map file> [--no-gui]
+```
+
+Other targets: `make lint` (flake8 + `mypy --strict`), `make debug` (runs under
+pdb) and `make clean`.
+
+### Example
+
+`maps/simple_fork.txt`:
+
 ```txt
 # Easy Level 2: Simple fork with two paths
 nb_drones: 4
@@ -26,109 +60,109 @@ connection: junction-path_b
 connection: path_a-goal
 connection: path_b-goal
 ```
-Optional:
 
-- Run `make debug` to go into debugging mode.
-- Run `make clean` to remove any `__pycache__` and ` `.mypy_cache`. 
-- Run `make lint` to check py files with flake8 and mypy.
-- Run `make lint strict` for a stricter version of the mypy. Note that most likely the files do not meet these standards as it is optional by the project specs.
-- I can send you a benchmark py file to check the benchmarks. It's not submitted, because it does not contrubute to the functionality of the program.
+```console
+$ make headless
+=====================================================
+D1-junction D2-junction
+D1-path_a D2-path_b D3-junction D4-junction
+D1-goal D2-goal D3-path_a D4-path_b
+D3-goal D4-goal
+=====================================================
+```
 
-## txt file format
+Each line is one turn and lists the drones that moved, as `D<id>-<hub>`. A
+drone flying into a restricted hub spends a turn on the connection, shown as
+`D<id>-<from>-<to>`, and lands on the following turn.
 
-The txt file needs to meet certain requirements:
+## Map file format
 
-- **One entry per line**, written as `key: value`. The valid keys are `nb_drones`, `start_hub`, `end_hub`, `hub` and `connection`. Any other key is rejected.
-- **Case-insensitive**: the whole file is lowercased before parsing.
-- **Comments** start with `#`. They can take up a full line or follow an entry. Empty lines are ignored.
-- **`nb_drones`** is mandatory and appears once. It takes a single integer ≥ 1.
-- **`start_hub`** and **`end_hub`** are mandatory and each appears exactly once. They use the same syntax as `hub`.
-- **`hub: <name> <x> <y> [metadata]`** declares a hub. `hub` lines can repeat.
-  - `name` must be unique and cannot be empty or contain dashes (`-`) or spaces.
+- **One entry per line**, written as `key: value`. The valid keys are
+  `nb_drones`, `start_hub`, `end_hub`, `hub` and `connection`.
+- **Case-insensitive**. `#` starts a comment, either on its own line or after an entry. Empty lines are ignored.
+- **`nb_drones: <n>`**: mandatory and appears once. An integer ≥ 1.
+- **`start_hub`**, **`end_hub`**: mandatory and appear exactly once each. They use the same syntax as `hub`.
+- **`hub: <name> <x> <y> [metadata]`**: declares a hub.
+  - `name` must be unique and cannot contain dashes (`-`) or spaces.
   - `x` is an integer ≥ 0. `y` is any integer.
-- **`connection: <name1>-<name2> [metadata]`** declares a bidirectional link between two hubs.
-  - At least one connection is required.
-  - Both names must be declared as hubs.
-  - A connection can't be declared twice. `a-b` and `b-a` count as the same connection.
-- **Metadata** is optional:
-  - It goes in a single pair of square brackets at the end of the line.
-  - It is written as space-separated `key=value` pairs with no spaces around `=`.
-  - Each key may appear only once per line.
+- **`connection: <name1>-<name2> [metadata]`**: declares a bidirectional link.
+  - At least one connection is required, and both hubs must exist.
+  - `a-b` and `b-a` are the same connection and can only be declared once.
+- **Metadata** is optional. It goes in a single pair of square brackets at the
+  end of the line, written as space-separated `key=value` pairs (each key at most once).
 
-  | Metadata key        | Applies to  | Values                                          | Default  |
-  |---------------------|-------------|-------------------------------------------------|----------|
-  | `zone`              | hubs        | `normal`, `blocked`, `restricted`, `priority`   | `normal` |
-  | `color`             | hubs        | any color name                                  | none     |
-  | `max_drones`        | hubs        | integer ≥ 1                                     | `1`      |
-  | `max_link_capacity` | connections | integer ≥ 1 (the only key allowed on connections) | `1`    |
+| Metadata key        | Applies to  | Values                                        | Default  |
+|---------------------|-------------|-----------------------------------------------|----------|
+| `zone`              | hubs        | `normal`, `blocked`, `restricted`, `priority` | `normal` |
+| `color`             | hubs        | any pygame color name, or `rainbow`           | none     |
+| `max_drones`        | hubs        | integer ≥ 1                                   | `1`      |
+| `max_link_capacity` | connections | integer ≥ 1                                   | `1`      |
 
-  - `blocked` hubs cannot be entered.
-  - Entering a `restricted` hub costs 2 turns instead of 1.
-  - `priority` hubs are preferred when paths are otherwise equal in cost.
-  - `max_drones` is ignored for `start_hub` and `end_hub`, which have unlimited capacity.
-- **Start and end must be connected**: there has to be a path from `start_hub` to `end_hub`.
+- `blocked` hubs can never be entered.
+- Entering a `restricted` hub takes 2 turns instead of 1.
+- `priority` hubs are preferred over other paths of equal cost.
+- `start_hub` and `end_hub` can hold the whole fleet, regardless of `max_drones`.
+- There must be a path from `start_hub` to `end_hub` that avoids blocked hubs.
+
+More examples are in [`maps/`](maps/): `zones.txt` uses every zone type and
+`bottleneck.txt` pushes eight drones through a single-capacity hub.
+
+## How it works
+
+### Pathfinding
+
+Each hub costs 1 turn to enter (2 if restricted). Paths are compared by
+`(cost, number of non-priority hubs)`, so among equally fast routes the one
+through the most priority hubs wins. I chose Dijkstra's algorithm over A\*: a
+distance heuristic can easily lead towards a hub that looks close to the goal
+but turns out to be a dead end.
+
+### Scheduling
+
+Every turn, drones are processed closest-to-the-goal first. For each drone:
+
+1. Compute the shortest path to the goal, ignoring other drones.
+2. If the next hub and link on that path have room, take that step.
+3. Otherwise, if an equally short path through hubs with room exists, take that one instead.
+4. Otherwise, wait one turn.
+
+Link usage is reset at the end of every turn. If a full turn passes in which no
+drone can move, the scheduler raises an error instead of looping forever.
+
+This is a greedy, per-turn approach. A globally optimal schedule would plan
+every drone's full route up front, for example with flow-based algorithms.
+
+### Visualizer
+
+- Use the on-screen arrows (bottom left) or the ←/→ keys to step through turns. ESC or the window's close button quits.
+- Hover a hub to see its name.
+- When more than two drones share a spot, one drone is drawn with a counter (e.g. `x4`).
+- Thicker connections have a higher `max_link_capacity`.
+- A drone entering a restricted hub is drawn on the connection for one turn.
+
+## Project structure
+
+```
+Fly-In/
+├── fly_in/
+│   ├── __main__.py     # command-line entry point
+│   ├── parser.py       # map file parsing and validation
+│   ├── graph.py        # runtime graph: hubs, connections, occupancy
+│   ├── pathfinder.py   # Dijkstra shortest path
+│   ├── scheduler.py    # turn-by-turn drone scheduling and output
+│   ├── visualizer.py   # pygame visualizer
+│   └── assets/         # sprites and background
+├── maps/               # example maps
+├── docs/               # README images
+├── Makefile
+└── pyproject.toml
+```
 
 ## Resources
 
-- [Dijkstra's Algorithm](https://www.geeksforgeeks.org/dsa/dijkstras-shortest-path-algorithm-greedy-algo-7/)
-- [pygame Docs](https://www.pygame.org/docs/)
+- [Dijkstra's algorithm](https://www.geeksforgeeks.org/dsa/dijkstras-shortest-path-algorithm-greedy-algo-7/)
+- [pygame-ce documentation](https://pyga.me/docs/)
 
-AI has been used mostly as a guide. That means I used it to help me figure out any blocks without it giving me away the answer, but with investigative questions to help me figure out the correct solution to my problem. It also helped me figure out pygame, since it was something completely new and opened up to me the possibilities with it.
-
-## Algorithm Choices
-
-I chose Dijkstra's algorithm for pathfinding, becuase it seemed to me it'd be the most optimal in this case. A* algorithms are generally faster, but in graphs it would have been very easy to pick some point which normally would be closer to the end, but this point would easily lead to a trap and there wouldn't have been a clear path to continue onwards.
-
-On the scheduling, I came up with my own solution. I'm running Dijkstra's algorithm for each drone and then pick the next step for each if it exists. If not, then the drone stays put and waits for the next turn.
-
-This is a rather greedy approach and maybe not the most optimal in this case. Ideally I would find each optimal path for each drone and assign it this path from the start.
-
-## Visual Representation
-
-The simulation has a visual component created with pygame:
-![alt text](image.png)
-
-The arrows in the down-left corner can be pressed with the mouse to go to the next or previous turn. Left goes to a previous turn, while right goes to a next turn. You can also interact with the turns by pressing the left and right arrow keys in the keyboard.
-
-By pressing the x top right or ESC, you quit the simulation.
-
-You can hover the mouse on the hubs to reveal its name.
-
-For a neater visual, if there are more than 2 drones in a hub, you see one drone with a number (e.g. 'x4') to reveal how many drones are actually there.
-
-The thickness of the connections reveal the capacity they hold. The thicker, the more drones can traverse this connection.
-
-If a hub had zone defined as 'restricted', then the drone waits one turn on the connection and then visits the hub.
-
-## Example case
-
-The following input:
-```txt
-# Easy Level 2: Simple fork with two paths
-nb_drones: 4
-
-start_hub: start 0 0 [color=green]
-hub: junction 1 0 [color=yellow max_drones=2]
-hub: path_a 2 1 [color=blue]
-hub: path_b 2 -1 [color=green]
-end_hub: goal 3 0 [color=red]
-
-connection: start-junction [max_link_capacity=2]
-connection: junction-path_a
-connection: junction-path_b
-connection: path_a-goal
-connection: path_b-goal
-```
-
-produces the following visual:
-![alt text](image-1.png)
-
-But also you can get a turn-by-turn output in terminal:
-```bash
-=====================================================
-D1-junction D2-junction 
-D1-path_a D2-path_b D3-junction D4-junction 
-D1-goal D2-goal D3-path_a D4-path_b 
-D3-goal D4-goal 
-=====================================================
-```
+AI was used as a guide: it asked investigative questions to help me get unblocked
+without handing me the answer. It also helped me get started with pygame, which
+was completely new to me.
