@@ -1,0 +1,19 @@
+# Eight drones squeezing through a single-capacity corridor
+nb_drones: 8
+
+start_hub: depot 0 1
+hub: a1 1 0 [max_drones=2]
+hub: a2 1 2 [max_drones=2]
+hub: choke 2 1 [color=yellow]
+hub: b1 3 0
+hub: b2 3 2 [zone=priority]
+end_hub: hangar 4 1 [color=red]
+
+connection: depot-a1 [max_link_capacity=2]
+connection: depot-a2 [max_link_capacity=2]
+connection: a1-choke
+connection: a2-choke
+connection: choke-b1
+connection: choke-b2
+connection: b1-hangar
+connection: b2-hangar
